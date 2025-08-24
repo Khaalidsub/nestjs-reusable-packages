@@ -64,25 +64,35 @@ export class RedisStreamsServer
     try {
       await this.client.connect();
 
-      const result = await fromPromise(
-        this.client.xGroupCreate(this.config.stream, this.config.group, '0', {
-          MKSTREAM: true,
-        }),
-        (err) => {
-          if (err instanceof Error) {
-            return err;
-          }
-          return new Error('Unknown error');
-        },
-      );
+      // Create consumer groups for all streams
+      for (const stream of this.config.streams) {
+        const result = await fromPromise(
+          this.client.xGroupCreate(stream.name, this.config.group, '0', {
+            MKSTREAM: true,
+          }),
+          (err) => {
+            if (err instanceof Error) {
+              return err;
+            }
+            return new Error('Unknown error');
+          },
+        );
 
-      if (result.isErr() && !result.error.message.includes('BUSYGROUP')) {
-        this.logger.error('Error creating group:', result.error);
-        throw result.error;
+        if (result.isErr() && !result.error.message.includes('BUSYGROUP')) {
+          this.logger.error(
+            `Error creating group for stream ${stream.name}:`,
+            result.error,
+          );
+          throw result.error;
+        }
       }
 
       this.logger.debug?.(
-        `Started Redis Streams consumer - Stream: ${this.config.stream}, Group: ${this.config.group}, Consumer: ${this.config.consumer}`,
+        `Started Redis Streams consumer - Streams: [${this.config.streams
+          .map((s) => s.name)
+          .join(
+            ', ',
+          )}], Group: ${this.config.group}, Consumer: ${this.config.consumer}`,
       );
 
       // Poll loop
@@ -106,17 +116,25 @@ export class RedisStreamsServer
   private async poll() {
     try {
       while (this.isRunning) {
+        // Read from all streams in a single call using array parameter
+        const streamKeys = this.config.streams.map((stream) => ({
+          key: stream.name,
+          id: '>',
+        }));
+
         const res = await this.client.xReadGroup(
           this.config.group,
           this.config.consumer,
-          [{ key: this.config.stream, id: '>' }],
+          streamKeys,
           {
             BLOCK: this.config.blockTimeout,
             COUNT: this.config.batchSize,
           },
         );
 
-        this.logger.debug?.('Polled for new messages...');
+        this.logger.debug?.(
+          `Polled ${this.config.streams.length} streams for new messages...`,
+        );
 
         if (res) {
           this.logger.debug?.(JSON.stringify(res, null, 2));
@@ -130,12 +148,8 @@ export class RedisStreamsServer
               // Pass into NestJS message handlers
               await this.handleMessage(pattern, data);
 
-              // Ack
-              await this.client.xAck(
-                this.config.stream,
-                this.config.group,
-                msg.id,
-              );
+              // Ack - we need to find which stream this message came from
+              await this.client.xAck(stream.name, this.config.group, msg.id);
             }
           }
         }

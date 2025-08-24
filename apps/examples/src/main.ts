@@ -8,7 +8,7 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     // transport: Transport.TCP,
     strategy: new RedisStreamsServer({
-      stream: process.env.STREAM,
+      streams: [{ name: process.env.STREAM || 'mystream' }],
       group: process.env.GROUP,
       consumer: process.env.CONSUMER,
     }),

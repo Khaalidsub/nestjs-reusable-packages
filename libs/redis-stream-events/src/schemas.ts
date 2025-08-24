@@ -32,17 +32,30 @@ export const RedisConfigSchema = z.object({
     .default(5000),
 });
 
+// Stream configuration for individual streams
+export const StreamConfigSchema = z.object({
+  name: z.string().min(1, 'Stream name cannot be empty'),
+});
+
 // Redis Stream server configuration schema
 export const RedisStreamServerConfigSchema = z.object({
-  stream: z.string().min(1, 'Stream name cannot be empty').default('mystream'),
+  // Array of streams to consume from
+  streams: z
+    .array(StreamConfigSchema)
+    .min(1, 'At least one stream must be configured'),
+
+  // Single consumer group for all streams
   group: z
     .string()
     .min(1, 'Consumer group name cannot be empty')
     .default('nestjs_group'),
+
+  // Single consumer name for all streams
   consumer: z
     .string()
     .min(1, 'Consumer name cannot be empty')
     .default('consumer-1'),
+
   blockTimeout: z.coerce
     .number()
     .int()
@@ -62,6 +75,7 @@ export const RedisStreamRegistrationSchema = z.object({
 });
 
 export type RedisConfig = z.infer<typeof RedisConfigSchema>;
+export type StreamConfig = z.infer<typeof StreamConfigSchema>;
 export type RedisStreamServerConfig = z.infer<
   typeof RedisStreamServerConfigSchema
 >;

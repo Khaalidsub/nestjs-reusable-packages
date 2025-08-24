@@ -5,13 +5,15 @@ This library provides a modular way to work with Redis Streams in NestJS, suppor
 
 ## Features
 
-- **RedisStreamsModule**: Main entry point for configuring Redis connection and stream registration.
-- **BaseClient**: Handles Redis connection lifecycle and graceful shutdown.
-- **RedisStreamsClient**: Publishes validated payloads to Redis streams.
-- **RedisStreamsServer**: Consumes events from Redis streams using group/consumer semantics.
-- **InjectRedisStreamClient Decorator**: Injects the stream client into your services/controllers.
-- **Type-safe Payloads**: Uses Zod schemas for payload validation.
-- **Customizable Stream, Group, Consumer IDs**.
+- **Multi-Stream Support**: Consume from multiple Redis streams using a single consumer group and consumer ID
+- **Efficient Polling**: Single `XREADGROUP` call handles multiple streams simultaneously
+- **RedisStreamsModule**: Main entry point for configuring Redis connection and stream registration
+- **BaseClient**: Handles Redis connection lifecycle and graceful shutdown
+- **RedisStreamsClient**: Publishes validated payloads to Redis streams
+- **RedisStreamsServer**: Consumes events from one or more Redis streams using group/consumer semantics
+- **InjectRedisStreamClient Decorator**: Injects the stream client into your services/controllers
+- **Type-safe Payloads**: Uses Zod schemas for payload validation
+- **Configuration Validation**: Runtime validation with clear error messages
 
 ---
 
@@ -95,33 +97,47 @@ export class MyService {
 }
 ```
 
-### 3. Consuming Events
+### 3. Consuming Events from Multiple Streams
 
-Implement a custom server using `RedisStreamsServer` with configuration validation:
+Implement a custom server using `RedisStreamsServer` to consume from one or more streams using a single consumer group:
 
 ```typescript
 import { RedisStreamsServer } from '@app/redis-stream-events';
 
-// Basic configuration with defaults
-const server = new RedisStreamsServer();
-
-// Or with custom configuration
-const server = new RedisStreamsServer({
-  stream: 'user-events',
+// Single stream configuration
+const singleStreamServer = new RedisStreamsServer({
+  streams: [{ name: 'user-events' }],
   group: 'user-service-group',
   consumer: 'consumer-1',
+});
+
+// Multiple streams configuration
+const multiStreamServer = new RedisStreamsServer({
+  streams: [
+    { name: 'user-events' },
+    { name: 'order-events' },
+    { name: 'notification-events' }
+  ],
+  group: 'main-service-group', // Single consumer group for all streams
+  consumer: 'consumer-1', // Single consumer ID for all streams
   blockTimeout: 10000, // Wait 10 seconds for new messages
-  batchSize: 5, // Process up to 5 messages at once
+  batchSize: 5, // Process up to 5 messages at once from any stream
   redisConfig: {
     url: 'redis://localhost:6379',
     password: 'your-password',
   },
 });
 
-server.listen(() => {
-  console.log('Redis Streams server started successfully');
+multiStreamServer.listen(() => {
+  console.log('Redis Streams server started - consuming from multiple streams');
 });
 ```
+
+**Important Notes:**
+- All streams share the same consumer group and consumer ID
+- Consumer groups are automatically created for each stream during startup
+- Single `XREADGROUP` call efficiently polls all streams simultaneously
+- Messages from any stream can be processed in any order based on arrival
 
 ---
 
@@ -158,18 +174,25 @@ server.listen(() => {
 
 ### RedisStreamsServer
 
-- `constructor(config?)`: Create server with optional configuration:
+- `constructor(config)`: Create server with **required** configuration for multiple streams:
   ```typescript
   {
-    stream?: string; // Stream name (default: 'mystream')
-    group?: string; // Consumer group (default: 'nestjs_group')
+    streams: Array<{ name: string }>; // Required: Array of stream names to consume from (min 1)
+    group?: string; // Consumer group name (default: 'nestjs_group')
     consumer?: string; // Consumer name (default: 'consumer-1')
     blockTimeout?: number; // Block timeout ≥0ms (default: 5000)
     batchSize?: number; // Batch size ≥1 (default: 1)
     redisConfig?: RedisConfig; // Redis connection config (optional)
   }
   ```
-- `listen(callback)`: Starts consuming events from the stream with validation
+- `listen(callback)`: Starts consuming events from all configured streams using a single consumer group and consumer
+
+**Architecture Details:**
+- **Single Consumer Group**: All streams use the same consumer group name
+- **Single Consumer ID**: All streams use the same consumer identifier
+- **Efficient Polling**: One `XREADGROUP` call polls all streams simultaneously
+- **Auto Group Creation**: Consumer groups are created automatically for each stream during startup
+- **Per-Stream Acknowledgment**: Messages are acknowledged individually per stream
 
 ### Configuration Errors
 
@@ -195,14 +218,18 @@ All configuration errors throw `RedisConfigurationError` with detailed messages:
 
 ## Best Practices
 
-- Use environment variables for sensitive config like passwords
-- Validate all payloads with Zod schemas for type safety
-- Handle `RedisConfigurationError` for clear debugging
-- Set appropriate timeouts based on your network conditions
-- Use meaningful stream, group, and consumer names
-- Monitor Redis connection health in production
+- **Multi-Stream Design**: Group related streams under a single consumer when they need coordinated processing
+- **Stream Naming**: Use descriptive, consistent naming conventions (e.g., `user-events`, `order-events`)
+- **Consumer Groups**: Choose meaningful group names that reflect the consuming service purpose
+- **Error Handling**: Handle `RedisConfigurationError` for clear debugging of configuration issues
+- **Environment Variables**: Use environment variables for sensitive config like passwords and URLs
+- **Schema Validation**: Always validate payloads with Zod schemas for type safety and runtime validation
+- **Timeouts**: Set appropriate `blockTimeout` and `connectTimeout` based on your network conditions
+- **Batch Size**: Tune `batchSize` based on message volume and processing capacity
+- **Monitoring**: Monitor Redis connection health and stream lag in production
+- **Graceful Shutdown**: The server handles graceful shutdown automatically via `OnApplicationShutdown`
 
 ---
 
 **Summary:**  
-This library enables robust, type-safe event streaming with Redis in NestJS, supporting both publishing and consuming with easy configuration and dependency injection.
+This library enables robust, type-safe event streaming with Redis in NestJS, supporting both publishing and consuming from multiple streams with a unified consumer approach. The multi-stream architecture allows efficient processing of related event streams using a single consumer group and optimized Redis operations.
