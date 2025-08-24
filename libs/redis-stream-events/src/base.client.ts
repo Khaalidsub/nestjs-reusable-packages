@@ -1,6 +1,5 @@
 import { OnApplicationShutdown, Logger } from '@nestjs/common';
 import { RedisClientType, createClient } from 'redis';
-import { z } from 'zod';
 import {
   RedisConfig,
   RedisConfigSchema,
