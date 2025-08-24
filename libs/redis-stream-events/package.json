@@ -1,0 +1,30 @@
+{
+  "name": "redis-stream",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "MIT",
+"dependencies": {
+  "neverthrow": "^8.2.0",
+  "redis": "^5.8.2",
+  "reflect-metadata": "^0.2.2"
+},
+"peerDependencies": {
+  "@nestjs/common": "^11.0.1",
+  "@nestjs/core": "^11.0.1",
+  "@nestjs/microservices": "^11.1.6",
+  "rxjs": "^7.8.1",
+  "zod": "^4.1.0"
+},
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "source-map-support": "^0.5.21",
+    "ts-jest": "^29.2.5",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  }
+}
