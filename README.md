@@ -1,34 +1,73 @@
+# NestJS Reusable Packages
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+<p align="center">A collection of reusable NestJS packages and libraries for building efficient and scalable applications.</p>
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This repository contains multiple shareable NestJS packages designed to be easily integrated into your applications. Each package is built with TypeScript and follows NestJS best practices for modularity and dependency injection.
+
+## Available Packages
+
+### 📦 Redis Stream Events (`libs/redis-stream-events`)
+
+A comprehensive NestJS module for working with Redis Streams, providing both publishing and consuming capabilities with type-safe payloads.
+
+**Features:**
+- Type-safe event publishing with Zod schema validation
+- Consumer groups and message acknowledgment
+- Graceful connection handling and shutdown
+- Easy dependency injection with decorators
+
+**Quick Start:**
+```typescript
+@Module({
+  imports: [
+    RedisStreamsModule.forRoot({ url: 'redis://localhost:6379' }),
+    RedisStreamsModule.register({ streamId: 'mystream' }),
+  ],
+})
+export class AppModule {}
+```
+
+[📖 Full Documentation](README_REDISSTREAMS.md)
+
+---
+
+## Project Structure
+
+```
+libs/
+├── redis-stream-events/     # Redis Streams package
+│   ├── src/
+│   │   ├── redis-streams.module.ts
+│   │   ├── redis-stream.client.ts
+│   │   ├── redis-stream.server.ts
+│   │   └── ...
+│   └── tsconfig.lib.json
+└── [future-packages]/       # More packages coming soon!
+
+apps/
+├── examples/                # Usage examples
+└── super-repo/             # Main application
+```
 
 ## Project setup
 
+## Development
+
 ```bash
+# Install dependencies
 $ pnpm install
+
+# Run examples app
+$ pnpm start:dev examples
+
+# Run main app
+$ pnpm start:dev super-repo
 ```
 
 ## Compile and run the project
@@ -70,6 +109,25 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+## Contributing
+
+We welcome contributions! If you'd like to add a new reusable package:
+
+1. Create a new directory under `libs/`
+2. Follow the existing structure and patterns
+3. Add comprehensive documentation
+4. Include usage examples in the `apps/examples` directory
+5. Submit a pull request
+
+## Future Packages
+
+We're planning to add more reusable packages including:
+- Database utilities
+- Authentication helpers
+- Logging modules
+- API response formatters
+- And more...
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
@@ -95,5 +153,4 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-# nestjs-reusable-packages
+This project is [MIT licensed](LICENSE).
