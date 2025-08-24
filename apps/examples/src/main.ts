@@ -7,11 +7,11 @@ async function bootstrap() {
   const app = await NestFactory.create(ExamplesModule);
   app.connectMicroservice<MicroserviceOptions>({
     // transport: Transport.TCP,
-    strategy: new RedisStreamsServer(
-      process.env.STREAM,
-      process.env.GROUP,
-      process.env.CONSUMER,
-    ),
+    strategy: new RedisStreamsServer({
+      stream: process.env.STREAM,
+      group: process.env.GROUP,
+      consumer: process.env.CONSUMER,
+    }),
   });
   console.log('Starting application...');
   app.enableShutdownHooks();

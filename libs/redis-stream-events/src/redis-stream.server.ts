@@ -3,6 +3,11 @@ import { createClient, RedisClientType } from 'redis';
 import { fromPromise } from 'neverthrow';
 import { z } from 'zod';
 import { OnApplicationShutdown } from '@nestjs/common';
+import {
+  RedisStreamServerConfig,
+  RedisStreamServerConfigSchema,
+  RedisConfigurationError,
+} from './schemas';
 
 const isZodSchema = (schema: unknown): schema is z.ZodSchema<unknown> => {
   return (
@@ -19,45 +24,79 @@ export class RedisStreamsServer
 {
   private isRunning = true;
   private client: RedisClientType;
+  private config: RedisStreamServerConfig;
 
-  constructor(
-    private stream = 'mystream',
-    private group = 'nestjs_group',
-    private consumer = 'consumer-1',
-  ) {
+  constructor(configInput?: Partial<RedisStreamServerConfig>) {
     super();
+
+    const configResult = RedisStreamServerConfigSchema.safeParse(
+      configInput || {},
+    );
+    if (!configResult.success) {
+      throw RedisConfigurationError.fromZodError(configResult.error);
+    }
+    this.config = configResult.data;
+
+    // Create Redis client with validated configuration
+    const redisUrl = this.config.redisConfig?.url || 'redis://localhost:6379';
     this.client = createClient({
-      url: 'redis://localhost:6379',
+      url: redisUrl,
+      socket: {
+        host: this.config.redisConfig?.host,
+        port: this.config.redisConfig?.port,
+        connectTimeout: this.config.redisConfig?.connectTimeout,
+      },
+      password: this.config.redisConfig?.password,
+      username: this.config.redisConfig?.username,
+      database: this.config.redisConfig?.database,
+    });
+
+    this.client.on('error', (err) => {
+      this.logger.error('Redis client error:', err);
+    });
+
+    this.client.on('connect', () => {
+      this.logger.debug?.('Connected to Redis for streaming');
     });
   }
 
   async listen(callback: () => void) {
-    await this.client.connect();
+    try {
+      await this.client.connect();
 
-    const result = await fromPromise(
-      this.client.xGroupCreate(this.stream, this.group, '0', {
-        MKSTREAM: true,
-      }),
-      (err) => {
-        if (err instanceof Error) {
-          //   console.error('Error creating group:', err);
-          return err;
-        }
-        return new Error('Unknown error');
-      },
-    );
+      const result = await fromPromise(
+        this.client.xGroupCreate(this.config.stream, this.config.group, '0', {
+          MKSTREAM: true,
+        }),
+        (err) => {
+          if (err instanceof Error) {
+            return err;
+          }
+          return new Error('Unknown error');
+        },
+      );
 
-    if (result.isErr() && !result.error.message.includes('BUSYGROUP')) {
-      // Handle error
-      // console.error('Error creating group:', result.error);
-      this.logger.error('Error creating group:', result.error);
-      throw result.error;
+      if (result.isErr() && !result.error.message.includes('BUSYGROUP')) {
+        this.logger.error('Error creating group:', result.error);
+        throw result.error;
+      }
+
+      this.logger.debug?.(
+        `Started Redis Streams consumer - Stream: ${this.config.stream}, Group: ${this.config.group}, Consumer: ${this.config.consumer}`,
+      );
+
+      // Poll loop
+      void this.poll();
+
+      callback();
+    } catch (error) {
+      this.logger.error('Failed to start Redis Streams server:', error);
+      throw new RedisConfigurationError(
+        'connection',
+        this.config,
+        'Successful Redis connection and stream setup',
+      );
     }
-
-    // Poll loop
-    void this.poll();
-
-    callback();
   }
 
   async close() {
@@ -68,10 +107,13 @@ export class RedisStreamsServer
     try {
       while (this.isRunning) {
         const res = await this.client.xReadGroup(
-          this.group,
-          this.consumer,
-          [{ key: this.stream, id: '>' }],
-          { BLOCK: 5000, COUNT: 1 },
+          this.config.group,
+          this.config.consumer,
+          [{ key: this.config.stream, id: '>' }],
+          {
+            BLOCK: this.config.blockTimeout,
+            COUNT: this.config.batchSize,
+          },
         );
 
         this.logger.debug?.('Polled for new messages...');
@@ -89,7 +131,11 @@ export class RedisStreamsServer
               await this.handleMessage(pattern, data);
 
               // Ack
-              await this.client.xAck(this.stream, this.group, msg.id);
+              await this.client.xAck(
+                this.config.stream,
+                this.config.group,
+                msg.id,
+              );
             }
           }
         }
@@ -98,7 +144,7 @@ export class RedisStreamsServer
       if (err instanceof Error && err.message.includes('ClientClosedError')) {
         return;
       }
-      // console.error('Polling error:', err);
+      this.logger.error('Polling error:', err);
     }
   }
 
