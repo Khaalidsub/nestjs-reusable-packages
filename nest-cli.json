@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/super-repo/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/super-repo/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/super-repo",
+  "projects": {
+    "examples": {
+      "type": "application",
+      "root": "apps/examples",
+      "entryFile": "main",
+      "sourceRoot": "apps/examples/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/examples/tsconfig.app.json"
+      }
+    },
+    "redis-stream-events": {
+      "type": "library",
+      "root": "libs/redis-stream-events",
+      "entryFile": "index",
+      "sourceRoot": "libs/redis-stream-events/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/redis-stream-events/tsconfig.lib.json"
+      }
+    },
+    "super-repo": {
+      "type": "application",
+      "root": "apps/super-repo",
+      "entryFile": "main",
+      "sourceRoot": "apps/super-repo/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/super-repo/tsconfig.app.json"
+      }
+    }
+  }
+}
