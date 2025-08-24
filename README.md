@@ -59,15 +59,40 @@ apps/
 
 ## Development
 
+### Prerequisites
+
+Make sure you have Docker and Docker Compose installed for running Redis.
+
+### Setup
+
 ```bash
 # Install dependencies
 $ pnpm install
+
+# Start Redis (required for Redis Streams package)
+$ pnpm run redis:up
 
 # Run examples app
 $ pnpm start:dev examples
 
 # Run main app
 $ pnpm start:dev super-repo
+```
+
+### Redis Management
+
+```bash
+# Start Redis container
+$ pnpm run redis:up
+
+# Stop Redis container
+$ pnpm run redis:down
+
+# View Redis logs
+$ pnpm run redis:logs
+
+# Access Redis CLI
+$ pnpm run redis:cli
 ```
 
 ## Compile and run the project
